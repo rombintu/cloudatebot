@@ -1,1 +1,1 @@
-start_message = "Привет, я управляю OpenStack"
+start_message = "Привет, я управляю OpenStack\n\t/servers - Список виртуальных машин"

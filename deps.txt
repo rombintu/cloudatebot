@@ -1,5 +1,6 @@
 certifi==2022.12.7
 charset-normalizer==2.1.1
+credentials==1.1
 debtcollector==2.5.0
 greenlet==2.0.1
 idna==3.4
