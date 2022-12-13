@@ -19,5 +19,10 @@ class Test_OSAPI(unittest.TestCase):
         for s in servers:
             print(f"Name: {s.name} STATE: {s.status} ID {s.id}")
 
+    def test_server_show(self):
+        server, err = osapi.server_show("ac8b2c98-6fbe-40b1-8e0b-2506162e4288")
+        if err:
+            print(err)
+        print(server)
 if __name__ == '__main__':
     unittest.main()

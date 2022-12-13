@@ -1,1 +1,1 @@
-start_message = "Привет, я управляю OpenStack\n\t/servers - Список виртуальных машин"
+start_message = "Cloudate OpenStack\n\t/servers - Список виртуальных машин"

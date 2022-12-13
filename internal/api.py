@@ -36,4 +36,19 @@ class OpenStackApi:
             return self.nova.servers.list(), 0
         except Exception as err:
             return [], err
- 
+    
+    # def server_show(self, _id):
+    #     try:
+    #         self.nova_open()
+    #         server = self.nova.servers.find(id=_id)
+    #         if not server:
+    #             return "", 0
+    #         info = ""
+    #         for gkey, gdata in server._info:
+    #             if gkey == "addresses" and gdata:
+    #                 info += "\tIP-адреса: {}".format(
+    #                     '\n\t*'.join([f'{net}:`{addr["addr"]}`' for net, addr in gdata['addresses']]))
+    #             else: info += "IP-адреса: Нет"
+    #         return info
+    #     except Exception as err:
+    #         return "", err

@@ -15,8 +15,6 @@ bot = telebot.TeleBot(os.getenv("TOKEN"), parse_mode=None)
 # db = database.Database(envs["DATABASE"])
 # osapi = api.OpenStackApi()
 
-
-
 mem = memory.MEM()
 mem.refresh_servers()
 
@@ -31,15 +29,17 @@ def handle_message_start(message):
 def handle_message_expenses(message):
     keyboard = types.InlineKeyboardMarkup()
     # mem.refresh_servers()
-
+    if not mem.servers:
+        bot.send_message(message.chat.id, "Список серверов пуст")
+        return         
     for i in range(0, 4):
         keyboard.add(types.InlineKeyboardButton(text=f"{mem.servers[i].name}", callback_data=f"{mem.servers[i].id}"))
     keyboard.add(
-        types.InlineKeyboardButton(text=f"🔄", callback_data=f"refresh"),
-        types.InlineKeyboardButton(text=f"➡️", callback_data=f"4>")
+        types.InlineKeyboardButton(text="🔄", callback_data=f"refresh"),
+        types.InlineKeyboardButton(text="➡️", callback_data=f"4>")
         )
 
-    bot.send_message(message.chat.id, "Виртуальные машины", reply_markup=keyboard)
+    bot.send_message(message.chat.id, f"Последнее обновление: \n\t{mem.updated.strftime('%d %B в %H:%M')}", reply_markup=keyboard)
 
 @bot.callback_query_handler(func=lambda c: c.data)
 def servers_callback(c: types.CallbackQuery):
@@ -50,9 +50,12 @@ def servers_callback(c: types.CallbackQuery):
         for i in range(0, 4):
             keyboard.add(types.InlineKeyboardButton(text=f"{mem.servers[i].name}", callback_data=f"{mem.servers[i].id}"))
         keyboard.add(
-            types.InlineKeyboardButton(text=f"🔄", callback_data=f"refresh"),
-            types.InlineKeyboardButton(text=f"➡️", callback_data=f"4>")
+            types.InlineKeyboardButton(text="🔄", callback_data=f"refresh"),
+            types.InlineKeyboardButton(text="➡️", callback_data=f"4>")
             )
+        bot.edit_message_text(
+            f"Последнее обновление: \n\t{mem.updated.strftime('%d %B в %H:%M')}",
+            c.from_user.id, c.message.id)
         bot.edit_message_reply_markup(c.from_user.id, c.message.id, reply_markup=keyboard)
         return
 
@@ -68,19 +71,37 @@ def servers_callback(c: types.CallbackQuery):
                 break
         if start_id == 0:
             keyboard.add(
-                types.InlineKeyboardButton(text=f"🔄", callback_data=f"refresh"),
-                types.InlineKeyboardButton(text=f"➡️", callback_data=f"{start_id+4}>")
+                types.InlineKeyboardButton(text="🔄", callback_data=f"refresh"),
+                types.InlineKeyboardButton(text="➡️", callback_data=f"{start_id+4}>")
             )
         else: 
             keyboard.add(
-                types.InlineKeyboardButton(text=f"⬅️", callback_data=f"{start_id-4}>"),
-                types.InlineKeyboardButton(text=f"🔄", callback_data=f"refresh"),
-                types.InlineKeyboardButton(text=f"➡️", callback_data=f"{start_id+4}>")
+                types.InlineKeyboardButton(text="⬅️", callback_data=f"{start_id-4}>"),
+                types.InlineKeyboardButton(text="🔄", callback_data=f"refresh"),
+                types.InlineKeyboardButton(text="➡️", callback_data=f"{start_id+4}>")
             )
         bot.edit_message_reply_markup(c.from_user.id, c.message.id, reply_markup=keyboard)
         return
     else:
-        bot.send_message(c.from_user.id, f"`{c.data}`\n\tSome info", parse_mode="markdown")
+        server = mem.server_find(c.data)
+        server_info = "Функционал не допилен"
+        keyboard = types.InlineKeyboardMarkup(row_width=4)
+        if server:
+            server_info = server.get_pretty_info()
+            keyboard.add(
+                types.InlineKeyboardButton(text="⚙️", callback_data="settings"),
+                types.InlineKeyboardButton(text="🔑", callback_data="key"),
+            )
+            keyboard.add(
+                types.InlineKeyboardButton(text="Обновить информацию", callback_data="fresh"),
+            )
+            keyboard.add(
+                types.InlineKeyboardButton(text="▶️", callback_data="start"),
+                types.InlineKeyboardButton(text="⏹", callback_data="stop"),
+                types.InlineKeyboardButton(text="🔁", callback_data="soft_reboot"),
+                types.InlineKeyboardButton(text="🔂", callback_data="hard_reboot"),
+            )
+        bot.send_message(c.from_user.id, server_info, parse_mode="markdown", reply_markup=keyboard)
 
 def main():
     print("Service status: OK")
