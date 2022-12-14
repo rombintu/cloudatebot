@@ -7,9 +7,13 @@ class Server:
     ifaces = []
     hypervisor = ""
     status = ""
-
     def __init__(self, base):
         self.base = base
+        self.updated = datetime.now()
+        try:
+            self.vnc_url = base.get_console_url("novnc")["console"]["url"]
+        except:
+            self.vnc_url = "https://docs.openstack.org/nova/latest/admin/remote-console-access.html"
         self.refresh_info()
 
     def refresh_info(self):
@@ -32,8 +36,9 @@ class Server:
         else:
             info += "\IP: Нет"
         info += f"\nГипервизор: `{self.hypervisor}`"
-        info += f"\nКлючевая пара: *{self.key_name}*"
+        info += f"\nКлючевая пара: *{self.key_name}* 🔑"
         info += f"\nСтатус: {self.get_pretty_status(self.status)}"
+        info += f"\nОбновлено: {self.updated.strftime('%d %B в %H:%M:%S')} ⌛️"
         return info
 
     def get_pretty_status(self, status):
@@ -44,9 +49,19 @@ class Server:
         else:
             return f"*{status}* ⚠️"
 
+class User:
+    access = False
+    def __init__(self, _id):
+        self._id = _id
+
 class MEM:
+    services = []
     servers = []
-    updated = datetime.now()
+    users = []
+    
+    def __init__(self) -> None:
+        self.refresh_servers()
+        self.refresh_services()
 
     def refresh_servers(self):
         servers, err = osapi.server_list()
@@ -55,7 +70,14 @@ class MEM:
             return
         # REFRESH CACHE
         self.servers = servers
-        self.updated = datetime.now()
+
+    def refresh_services(self):
+        services, err = osapi.service_list()
+        if err:
+            print(err)
+            return
+        # REFRESH CACHE
+        self.services = services
 
     def server_find(self, _id):
         for s in self.servers:
@@ -63,7 +85,8 @@ class MEM:
                 return Server(s)
         return None
 
-    # def server_info(self, server):
-        
-            
-    #     return info
+    def services_info(self):
+        info = "\n"
+        for s in self.services:
+            info += f"\n{s.id}. {s.zone} *{s.binary}* {'✅' if s.state == 'up' else '⛔️'}"
+        return info
