@@ -1,5 +1,9 @@
 from internal import api
 from datetime import datetime 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 osapi = api.OpenStackApi()
 
@@ -51,17 +55,36 @@ class Server:
 
 class User:
     access = False
-    def __init__(self, _id):
+    def __init__(self, _id, username):
         self._id = _id
+        self.username = username
 
 class MEM:
+    admins = [int(os.environ["BOT_ADMIN"])]
     services = []
     servers = []
     users = []
-    
+
     def __init__(self) -> None:
         self.refresh_servers()
         self.refresh_services()
+
+    def login_check(self, _id):
+        for user in self.users:
+            if _id == user._id:
+                return True
+        for admin in self.admins:
+            if _id == admin:
+                return True
+        return False
+
+    def login(self, user):
+        self.users.append(user)
+
+    def logout(self, user):
+        for i, luser in enumerate(self.users):
+            if luser._id == user._id:
+                self.users.pop(i)
 
     def refresh_servers(self):
         servers, err = osapi.server_list()

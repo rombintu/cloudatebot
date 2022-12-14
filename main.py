@@ -11,12 +11,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-bot = telebot.TeleBot(os.getenv("TOKEN"), parse_mode=None)
+bot = telebot.TeleBot(os.getenv("BOT_TOKEN"), parse_mode=None)
 # db = database.Database(envs["DATABASE"])
 # osapi = api.OpenStackApi()
 
 mem = memory.MEM()
-page_size = "4"
+page_size = "5"
 
 def get_last_update_format():
     return f"Последнее обновление: \n\t{dt.now().strftime('%d %B в %H:%M')}"
@@ -45,6 +45,13 @@ def keyboard_for_server_refresh(_id, vnc_url):
     )
     return keyboard
 
+class Access(telebot.custom_filters.SimpleCustomFilter):
+    key='user_have_access'
+    @staticmethod
+    def check(message: telebot.types.Message):
+        return mem.login_check(message.from_user.id)
+
+bot.add_custom_filter(Access())
 
 @bot.message_handler(commands=['start', 'help'])
 def handle_message_start(message):
@@ -53,7 +60,31 @@ def handle_message_start(message):
         content.start_message
     )
 
-@bot.message_handler(commands=['services'])
+@bot.message_handler(commands=['admin'])
+def handle_message_start(message):
+    if message.from_user.id in mem.admins:
+        bot.send_message(message.from_user.id, f'Пользователи: {[(u._id, u.username) for u in mem.users]}')
+        return 
+    elif mem.login_check(message.from_user.id):
+        bot.send_message(message.from_user.id, "У вас уже есть доступ")
+        return 
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(types.InlineKeyboardButton(text="Предоставить доступ  ✅", 
+                callback_data=f"{message.from_user.id}_{message.from_user.username or 'noname'}_access_true"))
+    for admin in mem.admins:
+        bot.send_message(admin, 
+            f"Запрашивает доступ\
+                \nСсылка: @{message.from_user.username}\
+                \nИмя: {message.from_user.first_name} {message.from_user.last_name or ''}\
+                \nID: {message.from_user.id}",
+            reply_markup=keyboard,
+        )
+    bot.send_message(
+        message.from_user.id, 
+        "Запрос отправлен ⌛️"
+    )
+
+@bot.message_handler(commands=['services'], user_have_access=True)
 def handle_message_services(message):
     keyboard = types.InlineKeyboardMarkup()
     if not mem.services:
@@ -64,7 +95,7 @@ def handle_message_services(message):
         message.chat.id, get_last_update_format() + mem.services_info(), 
         reply_markup=keyboard, parse_mode="markdown")
 
-@bot.message_handler(commands=['servers'])
+@bot.message_handler(commands=['servers'], user_have_access=True)
 def handle_message_servers(message):
     keyboard = types.InlineKeyboardMarkup()
     if not mem.servers:
@@ -79,10 +110,10 @@ def handle_message_servers(message):
 
     bot.send_message(message.chat.id, get_last_update_format(), reply_markup=keyboard)
 
-@bot.callback_query_handler(func=lambda c: c.data)
+@bot.callback_query_handler(func=lambda c: c.data, user_have_access=True)
 def servers_callback(c: types.CallbackQuery):
     data = c.data.split("_")
-    page_size = 4
+    page_size = 5 # TODO
     match data:
         case ["refresh", "servers", "list"]:
             keyboard = types.InlineKeyboardMarkup()
@@ -183,6 +214,23 @@ def servers_callback(c: types.CallbackQuery):
             server_info = server.get_pretty_info()
             bot.edit_message_text(server_info,c.from_user.id, c.message.id, parse_mode="markdown",
                             reply_markup=keyboard_for_server(server.base.id, vnc_url=server.vnc_url))
+        case [_, _, "access", _]:
+            user_id = int(data[0])
+            user_name = data[1]
+            user = memory.User(user_id, user_name)
+            action = data[-1]
+            
+            keyboard = types.InlineKeyboardMarkup()
+            if action == "true":
+                keyboard.add(types.InlineKeyboardButton(text="Исключить ❌", callback_data=f"{user._id}_{user.username}_access_false"))
+                mem.login(user)
+                bot.send_message(user._id, "Доступ разрешен ✅")
+            elif action == "false":
+                keyboard.add(types.InlineKeyboardButton(text="Предоставить доступ ✅", callback_data=f"{user._id}_{user.username}_access_true"))
+                try: mem.logout(user)
+                except: pass
+                bot.send_message(user._id, "Доступ запрещен ❌")
+            bot.edit_message_reply_markup(c.from_user.id, c.message.id, reply_markup=keyboard)
         case _:
             print(data)
             bot.send_message(c.from_user.id, ", ".join(data))

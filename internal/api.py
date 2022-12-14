@@ -1,5 +1,8 @@
 import os
 from novaclient.client import Client
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def get_nova_credentials_v2():
     d = {}
