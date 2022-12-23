@@ -21,3 +21,17 @@ sudo cp ./system/cloudatebot.service /etc/systemd/system/cloudatebot.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now cloudatebot.service
 ```
+
+### Примеры
+Команда /start
+![img](./screenshots/c_start.png)
+
+Команда /services - мониторинг всех сервисов
+![img](./screenshots/c_services.png)
+
+Команда /servers - выбор серверов, пролистывание\обновление через колбек
+![img](./screenshots/c_servers_1.png)
+![img](./screenshots/c_servers_2.png)
+
+Колбек на определенный сервер
+![img](./screenshots/c_server_1.png)
