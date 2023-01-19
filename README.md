@@ -1,9 +1,9 @@
 ## OpenStackBot
 ### Установка Docker
 ```bash
-docker build -t osapibot:0.1.3 . 
+docker build -t osapibot:latest . 
 vim .env # **OS_CREDS and TOKEN
-docker run -d --name osapibot --env-file=.env osapibot:0.1.3
+docker run -d --name osapibot --env-file=.env -v $PWD/store:/opt/store osapibot:latest
 ```
 
 ### Установка Linux

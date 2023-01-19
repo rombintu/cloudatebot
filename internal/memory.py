@@ -1,6 +1,5 @@
 from internal import api
 from datetime import datetime 
-import os
 from io import StringIO
 
 from dotenv import load_dotenv
@@ -25,7 +24,10 @@ class Server:
     def refresh_info(self):
         if self.base._info["addresses"]:
             self.ifaces = [{net: [a["addr"] for a in addrs]} for net, addrs in self.base._info["addresses"].items()]
-        self.hypervisor = self.base._info["OS-EXT-SRV-ATTR:host"]
+        try:
+            self.hypervisor = self.base._info["OS-EXT-SRV-ATTR:host"]
+        except:
+            self.hypervisor = "unknown"
         self.status = self.base._info["status"]
         self.key_name = self.base._info["key_name"]
     
@@ -54,60 +56,54 @@ class Server:
             return f"*{status}* ⚠️"
 
 class User:
-    access = False
-    creds: bytes
+    creds_str: str
     def __init__(self, uuid, username):
         self.uuid = uuid
         self.username = username
+        self.servers = []
+        self.creds = {}
     
-    def set_creds(self, creds):
-        self.creds = creds
-    
-    def get_creds(self):
-        return self.creds
+    def set_creds(self, creds_str):
+        self.creds_str = creds_str
 
-    def get_env(self):
-        creds = self.get_creds()
-        if not creds:
-            return {}
-        return dotenv_values(stream=StringIO(creds.decode()))
-        
-     
+    def get_creds(self):
+        if not self.creds:
+            self.creds = dotenv_values(stream=StringIO(self.creds_str))
+        return self.creds 
+
+    def get_servers(self):
+        return self.servers
+    
+    def servers_refresh(self):
+        try:
+            servers = osapi.server_list(self.get_creds())
+        except Exception as err:
+            return {}, err
+        for s in servers:
+            self.servers.append(Server(s))
+        return self.servers, 0
+    
+    def get_server_by_id(self, _id):
+        for s in self.get_servers():
+            if s.base.id == _id:
+                return s
+        return None
 
 class MEM:
-    admins = [int(os.environ["BOT_ADMIN"])]
+    # servers = []
     services = []
-    servers = []
-    users = []
 
     def __init__(self) -> None:
-        self.refresh_servers()
+        # self.refresh_servers()
         self.refresh_services()
 
-    def login_check(self, uuid):
-        for user in self.users:
-            if uuid == user.uuid:
-                return True
-        for admin in self.admins:
-            if uuid == admin:
-                return True
-        return False
-
-    def login(self, user):
-        self.users.append(user)
-
-    def logout(self, user):
-        for i, luser in enumerate(self.users):
-            if luser.uuid == user.uuid:
-                self.users.pop(i)
-
-    def refresh_servers(self):
-        servers, err = osapi.server_list()
-        if err:
-            print(err)
-            return
-        # REFRESH CACHE
-        self.servers = servers
+    # def refresh_servers(self):
+    #     servers, err = osapi.server_list()
+    #     if err:
+    #         print(err)
+    #         return
+    #     # REFRESH CACHE
+    #     self.servers = servers
 
     def refresh_services(self):
         services, err = osapi.service_list()
@@ -117,11 +113,11 @@ class MEM:
         # REFRESH CACHE
         self.services = services
 
-    def server_find(self, _id):
-        for s in self.servers:
-            if _id == s.id:
-                return Server(s)
-        return None
+    # def server_find(self, _id):
+    #     for s in self.servers:
+    #         if _id == s.id:
+    #             return Server(s)
+    #     return None
 
     def services_info(self):
         info = "\n"

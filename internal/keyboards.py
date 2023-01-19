@@ -23,7 +23,7 @@ def keyboard_for_server_refresh(_id, vnc_url):
     keyboard.add(
         types.InlineKeyboardButton(text="⚙️", callback_data=f"settings_{_id}"),
         types.InlineKeyboardButton(text="🖥", url=vnc_url),
-        types.InlineKeyboardButton(text="⌛️", callback_data=f"refresh_server_{_id}"),
+        types.InlineKeyboardButton(text="⌛️", callback_data=f"server_refresh_{_id}"),
     )
     return keyboard
 
@@ -38,7 +38,7 @@ def get_keyboard_servers_list(servers, start_i=0):
     for i in range(start_i, start_i + on_page):
         if i == len(servers): break
         keyboard.add(
-            types.InlineKeyboardButton(text=f"{servers[i].name}", callback_data=f"server_show_{servers[i].id}")
+            types.InlineKeyboardButton(text=f"{servers[i].base.name}", callback_data=f"server_show_{servers[i].base.id}")
         )
 
     if start_i == 0 and start_i + on_page >= len(servers):

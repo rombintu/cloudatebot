@@ -18,7 +18,7 @@ Users = Table(
     Column("_id", Integer, primary_key=True),
     Column("uuid", Integer, unique=True),
     Column("username", String),
-    Column("creds", BLOB)
+    Column("creds", String)
 )
 
 class User(Base):
@@ -53,7 +53,7 @@ class Database:
     def update_creds(self, u):
         with self.engine.connect() as c:
             with c.begin():
-                update_user_creds = update(User).where(User.uuid == u.uuid).values(creds=u.creds)
+                update_user_creds = update(User).where(User.uuid == u.uuid).values(creds=u.creds_str)
                 return c.execute(update_user_creds)
 
         
