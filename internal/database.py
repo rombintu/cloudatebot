@@ -1,15 +1,13 @@
 # external imports
 from sqlalchemy import create_engine, Column, MetaData, Table
+from sqlalchemy import insert, select, update
 
 # from sqlalchemy_utils import database_exists, create_database
-from sqlalchemy import Integer, String
-from sqlalchemy.orm import declarative_base, Session
+from sqlalchemy import Integer, String, BLOB
+from sqlalchemy.orm import declarative_base
+from internal.memory import User as Umem
 
-# internal imports
-from datetime import datetime, timedelta
 
-# local imports
-#
 
 Base = declarative_base()
 Metadata = MetaData()
@@ -18,9 +16,9 @@ Users = Table(
     "users",
     Metadata,
     Column("_id", Integer, primary_key=True),
-    Column("uuid", Integer),
-    Column("nickname", String, unique=True),
-    Column("bank", Integer, default=0)
+    Column("uuid", Integer, unique=True),
+    Column("username", String),
+    Column("creds", BLOB)
 )
 
 class User(Base):
@@ -30,22 +28,32 @@ class Database:
     def __init__(self, engine):
         self.engine = create_engine(engine)
         Metadata.create_all(self.engine)
-        
-    def _open(self):
-        try:
-            self.session = Session(self.engine)
-            return 0
-        except Exception as err:
-            return err
+    
+    # def execute(self, script):
+    #     with self.engine.connect() as c:
+    #         with c.begin():
+    #             return c.execute(script)
+                
 
-    def _close(self):
-        self.session.close()
+    def login(self, u):
+        with self.engine.connect() as c:
+            with c.begin():
+                select_user = select(User).where(User.uuid == u.uuid)
+                login = c.execute(select_user).first()
+                if not login:
+                    create_user = (
+                        insert(User).values(uuid=u.uuid, username=u.username)
+                    )
+                    c.execute(create_user)
+                    login = c.execute(select_user).first()
+                user = Umem(login["uuid"], login["username"])
+                user.set_creds(login["creds"])
+                return user
+
+    def update_creds(self, u):
+        with self.engine.connect() as c:
+            with c.begin():
+                update_user_creds = update(User).where(User.uuid == u.uuid).values(creds=u.creds)
+                return c.execute(update_user_creds)
+
         
-    def increment_bank(self, uuid, nickname, i=5):
-        err = self._open()
-        if err:
-            return err
-        user = self.session.query(User).filter_by(nickname=nickname, uuid=uuid).first()
-        user.bank = user.bank + i
-        self._close()
-        return 0

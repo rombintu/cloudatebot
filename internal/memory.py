@@ -1,8 +1,10 @@
 from internal import api
 from datetime import datetime 
 import os
-from dotenv import load_dotenv
+from io import StringIO
 
+from dotenv import load_dotenv
+from dotenv import dotenv_values
 load_dotenv()
 
 osapi = api.OpenStackApi()
@@ -26,10 +28,8 @@ class Server:
         self.hypervisor = self.base._info["OS-EXT-SRV-ATTR:host"]
         self.status = self.base._info["status"]
         self.key_name = self.base._info["key_name"]
-        # self.status = self.base._info[""]
     
     def get_pretty_info(self):
-        # info = f"Имя: {self.base.name.replace('_', '-')}"
         info = f"Имя: `{self.base.name}`"
         info += f"\nID: `{self.base.id}`\n"
         if self.ifaces:
@@ -55,9 +55,24 @@ class Server:
 
 class User:
     access = False
-    def __init__(self, _id, username):
-        self._id = _id
+    creds: bytes
+    def __init__(self, uuid, username):
+        self.uuid = uuid
         self.username = username
+    
+    def set_creds(self, creds):
+        self.creds = creds
+    
+    def get_creds(self):
+        return self.creds
+
+    def get_env(self):
+        creds = self.get_creds()
+        if not creds:
+            return {}
+        return dotenv_values(stream=StringIO(creds.decode()))
+        
+     
 
 class MEM:
     admins = [int(os.environ["BOT_ADMIN"])]
@@ -69,12 +84,12 @@ class MEM:
         self.refresh_servers()
         self.refresh_services()
 
-    def login_check(self, _id):
+    def login_check(self, uuid):
         for user in self.users:
-            if _id == user._id:
+            if uuid == user.uuid:
                 return True
         for admin in self.admins:
-            if _id == admin:
+            if uuid == admin:
                 return True
         return False
 
@@ -83,7 +98,7 @@ class MEM:
 
     def logout(self, user):
         for i, luser in enumerate(self.users):
-            if luser._id == user._id:
+            if luser.uuid == user.uuid:
                 self.users.pop(i)
 
     def refresh_servers(self):

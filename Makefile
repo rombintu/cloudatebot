@@ -1,2 +1,5 @@
 run:
-	python main.py
+	python3 main.py
+
+test:
+	python3 tests.py
